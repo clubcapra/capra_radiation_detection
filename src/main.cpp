@@ -6,7 +6,8 @@
  * Description:
  * This code implements a radiation detector using an STM32 microcontroller. It calculates the Counts Per Minute (CPM)
  * and uSv/h values based on the number of falling edges detected from a Geiger-Muller tube. The CPM and uSv/h values
- * are calculated every 30 seconds. It then sends its value over ROSSerial in uSv/h through USB.
+ * are calculated every 5 seconds then saved into a buffer. According to what it is being detected in the last 5 seconds,
+ * it will act accordingly to what average it should make and send the data over ROS Serial.
  *
  * Pin assignment:
  * - Geiger Input Pin: PB4
