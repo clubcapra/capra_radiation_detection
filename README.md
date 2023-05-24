@@ -11,7 +11,7 @@ This repository contains an STM32F103C8T6 code example for detecting radiation l
 
 ## Circuit Connection
 
-Connect the Radiation detector and STM32F103C8T6 board to the Jetson Xavier as follows:
+Connect the M4011 Geiger-Muller tube and the radiation detector board to the Jetson Xavier as follows:
 
 - Connect the M4011 Geiger-Muller tube to the Radiation Detector.
 - Connect the Radiation Detector to the Jetson Xavier via USB-C cable.

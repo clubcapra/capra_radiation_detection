@@ -47,8 +47,8 @@ int bufferIndex = 0;
 
 //ROS SERIAL INITIALISATION
 ros::NodeHandle nh;
-std_msgs::Float64 raditaiton;
-ros::Publisher pub1("raditaiton", &raditaiton);
+std_msgs::Float64 radiation;
+ros::Publisher pub1("radiation", &radiation);
 
 void printDebug(unsigned long count, unsigned long elapsedTime, unsigned int cpm, float usvPerHour);
 float calculateUsvPH(unsigned int cpm, float conversionRate);
@@ -133,8 +133,8 @@ void loop()
     }
 
     //send the message via ROS Serial
-    raditaiton.data = averageuSvPHRecalculated;
-    pub1.publish(&raditaiton);
+    radiation.data = averageuSvPHRecalculated;
+    pub1.publish(&radiation);
     nh.spinOnce();
   }
 }
