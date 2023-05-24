@@ -53,7 +53,7 @@ ros::Publisher pub1("radiation", &radiation);
 void printDebug(unsigned long count, unsigned long elapsedTime, unsigned int cpm, float usvPerHour);
 float calculateUsvPH(unsigned int cpm, float conversionRate);
 void printDebugAverage(void);
-void calculateAverageUntilThresholdExceeded(void);
+float calculateAverageUntilThresholdExceeded(void);
 
 void geigerInterrupt()
 {
@@ -118,7 +118,7 @@ void loop()
     }
 
     //Calculate the average that's within the threshhold
-    calculateAverageUntilThresholdExceeded();
+    averageCPMRecalculated = calculateAverageUntilThresholdExceeded();
     averageuSvPHRecalculated = calculateUsvPH(averageCPMRecalculated,conversionRate);
 
     //Reset count and time for next calculation
@@ -198,7 +198,7 @@ float calculateUsvPH(unsigned int cpm, float conversionRate)
   return calculatedUSVPH; 
 }
 
-void calculateAverageUntilThresholdExceeded(void)
+float calculateAverageUntilThresholdExceeded(void)
 {
 
   bool thresholdExceeded = false;
@@ -206,6 +206,7 @@ void calculateAverageUntilThresholdExceeded(void)
   int i = 0;
   int currentValue = cpmBuffer[bufferIndex];
   int delta;
+  float newCPMValue;
 
   //Look through the entire circular buffer if threshhold isn't exceded
   while(!thresholdExceeded && i < BUFFER_SIZE)
@@ -228,5 +229,7 @@ void calculateAverageUntilThresholdExceeded(void)
   }
 
   //calculate the average of what is within the threshhold
-  averageCPMRecalculated = (float)sum / i;
+  newCPMValue = (float)sum / i;
+
+  return newCPMValue;
 }
