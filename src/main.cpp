@@ -25,27 +25,26 @@
 
 #define GEIGERPIN PB4
 #define POLLING_TIME 5000
-#define BUFFER_SIZE (60000/POLLING_TIME)
+#define BUFFER_SIZE (60000 / POLLING_TIME)
 #define VARIATION_THRESHOLD 72
 #define MILLIS_IN_MIN 60000UL
 #define DEBUG 0
-
 
 volatile unsigned long fallingEdgeCount = 0;
 unsigned long startTime = 0;
 unsigned long previousTime = 0;
 unsigned long previousCount = 0;
-const float conversionRate = 153.0; //Number from datasheet CPM->uSv/h
+const float conversionRate = 153.0; // Number from datasheet CPM->uSv/h
 bool flagBuffer = 0;
 float averageCPMRecalculated = 0;
 float averageuSvPHRecalculated = 0;
 
-//ROTATING BUFFER
+// ROTATING BUFFER
 int cpmBuffer[BUFFER_SIZE];
 float usvPerHourBuffer[BUFFER_SIZE];
 int bufferIndex = 0;
 
-//ROS SERIAL INITIALISATION
+// ROS SERIAL INITIALISATION
 ros::NodeHandle nh;
 std_msgs::Float64 radiation;
 ros::Publisher pub1("radiation", &radiation);
@@ -60,22 +59,22 @@ void geigerInterrupt()
   fallingEdgeCount++;
 }
 
-void setup() 
+void setup()
 {
-  if(DEBUG)
+  if (DEBUG)
   {
-    //SERIAL
+    // SERIAL
     Serial.begin(115200);
   }
 
-  //GEIGER
+  // GEIGER
   pinMode(GEIGERPIN, INPUT_FLOATING);
   attachInterrupt(digitalPinToInterrupt(GEIGERPIN), geigerInterrupt, FALLING);
 
-  //TIMER
+  // TIMER
   startTime = millis();
 
-  //ROS SETUP
+  // ROS SETUP
   nh.getHardware()->setBaud(57600);
   nh.initNode();
   nh.advertise(pub1);
@@ -83,56 +82,55 @@ void setup()
 
 void loop()
 {
-  //Timer
+  // Timer
   unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - previousTime;
 
   // If 'POLLING_TIME' seconds have passed, calculate CPM & uSv/h
-  if (elapsedTime >= POLLING_TIME) 
+  if (elapsedTime >= POLLING_TIME)
   {
     // Calculate CPM
     unsigned long count = fallingEdgeCount - previousCount;
     unsigned int cpm = (count * MILLIS_IN_MIN) / elapsedTime; // Adjusted calculation
 
     // Convert CPM to uSv/h
-    float usvPerHour = calculateUsvPH(cpm,conversionRate);
+    float usvPerHour = calculateUsvPH(cpm, conversionRate);
 
     // Store values in the buffer
     cpmBuffer[bufferIndex] = cpm;
     usvPerHourBuffer[bufferIndex] = usvPerHour;
     bufferIndex = (bufferIndex + 1) % BUFFER_SIZE; // Rotate buffer index
 
-
-    //Debug information
-    if(DEBUG)
+    // Debug information
+    if (DEBUG)
     {
-      printDebug(count,elapsedTime,cpm,usvPerHour);
+      printDebug(count, elapsedTime, cpm, usvPerHour);
       if (bufferIndex >= BUFFER_SIZE)
       {
         flagBuffer = 1;
       }
-      if(flagBuffer)
+      if (flagBuffer)
       {
         printDebugAverage();
       }
     }
 
-    //Calculate the average that's within the threshhold
+    // Calculate the average that's within the threshhold
     averageCPMRecalculated = calculateAverageUntilThresholdExceeded();
-    averageuSvPHRecalculated = calculateUsvPH(averageCPMRecalculated,conversionRate);
+    averageuSvPHRecalculated = calculateUsvPH(averageCPMRecalculated, conversionRate);
 
-    //Reset count and time for next calculation
+    // Reset count and time for next calculation
     previousCount = fallingEdgeCount;
     previousTime = currentTime;
 
-    //Check what message is being send
-    if(DEBUG)
+    // Check what message is being send
+    if (DEBUG)
     {
       Serial.print("\naverageuSvPHRecalculated : ");
       Serial.print(averageuSvPHRecalculated);
     }
 
-    //send the message via ROS Serial
+    // send the message via ROS Serial
     radiation.data = averageuSvPHRecalculated;
     pub1.publish(&radiation);
     nh.spinOnce();
@@ -141,7 +139,7 @@ void loop()
 
 void printDebug(unsigned long count, unsigned long elapsedTime, unsigned int cpm, float usvPerHour)
 {
-  //print current value
+  // print current value
   Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ncurrent on buffer: ");
   Serial.print(bufferIndex);
   Serial.print("\ncurrent CPM: ");
@@ -151,16 +149,16 @@ void printDebug(unsigned long count, unsigned long elapsedTime, unsigned int cpm
   Serial.print("\nElapsed time: ");
   Serial.print(elapsedTime);
 
-  //Print circulat buffers
+  // Print circulat buffers
   Serial.print("\nuSv/h : ");
-  for (int i = 0; i < BUFFER_SIZE; i++) 
+  for (int i = 0; i < BUFFER_SIZE; i++)
   {
     Serial.print(" [");
     Serial.print(usvPerHourBuffer[i]);
     Serial.print("] ");
   }
   Serial.print("\nCPM: ");
-  for (int i = 0; i < BUFFER_SIZE; i++) 
+  for (int i = 0; i < BUFFER_SIZE; i++)
   {
     Serial.print(" [");
     Serial.print(cpmBuffer[i]);
@@ -170,7 +168,7 @@ void printDebug(unsigned long count, unsigned long elapsedTime, unsigned int cpm
 
 void printDebugAverage(void)
 {
-  //Print the average uSv/h in the circular buffer
+  // Print the average uSv/h in the circular buffer
   Serial.print("\nBuffer uSvPH is full: The average of it is : ");
   float sumuSvph = 0.0;
   for (int i = 0; i < BUFFER_SIZE; i++)
@@ -180,7 +178,7 @@ void printDebugAverage(void)
   float averageusvPerHour = sumuSvph / BUFFER_SIZE;
   Serial.print(averageusvPerHour);
 
-  //Print the average CPM in the circular buffer
+  // Print the average CPM in the circular buffer
   Serial.print("\nBuffer CPM is full: The average of it is : ");
   float sumuCPM = 0.0;
   for (int i = 0; i < BUFFER_SIZE; i++)
@@ -194,8 +192,8 @@ void printDebugAverage(void)
 float calculateUsvPH(unsigned int cpm, float conversionRate)
 {
   float calculatedUSVPH;
-  calculatedUSVPH = cpm / conversionRate; //Conversion rate taken from datasheet
-  return calculatedUSVPH; 
+  calculatedUSVPH = cpm / conversionRate; // Conversion rate taken from datasheet
+  return calculatedUSVPH;
 }
 
 float calculateAverageUntilThresholdExceeded(void)
@@ -208,16 +206,16 @@ float calculateAverageUntilThresholdExceeded(void)
   int delta;
   float newCPMValue;
 
-  //Look through the entire circular buffer if threshhold isn't exceded
-  while(!thresholdExceeded && i < BUFFER_SIZE)
+  // Look through the entire circular buffer if threshhold isn't exceded
+  while (!thresholdExceeded && i < BUFFER_SIZE)
   {
-    //Calculate the index in reverse order
-    int index = (bufferIndex - i + BUFFER_SIZE) % BUFFER_SIZE;  
+    // Calculate the index in reverse order
+    int index = (bufferIndex - i + BUFFER_SIZE) % BUFFER_SIZE;
 
     delta = fabs(currentValue - cpmBuffer[index]);
 
-    //Check if the current value checked is within the threshhold
-    if((delta <= VARIATION_THRESHOLD) && (!thresholdExceeded))
+    // Check if the current value checked is within the threshhold
+    if ((delta <= VARIATION_THRESHOLD) && (!thresholdExceeded))
     {
       sum += cpmBuffer[index];
     }
@@ -228,7 +226,7 @@ float calculateAverageUntilThresholdExceeded(void)
     i++;
   }
 
-  //calculate the average of what is within the threshhold
+  // calculate the average of what is within the threshhold
   newCPMValue = (float)sum / i;
 
   return newCPMValue;
