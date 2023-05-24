@@ -28,7 +28,7 @@
 #define BUFFER_SIZE (60000/POLLING_TIME)
 #define VARIATION_THRESHOLD 72
 #define MILLIS_IN_MIN 60000UL
-#define DEBUG 1
+#define DEBUG 0
 
 
 volatile unsigned long fallingEdgeCount = 0;
