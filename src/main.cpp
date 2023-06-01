@@ -27,8 +27,9 @@
 #define POLLING_TIME 5000
 #define BUFFER_SIZE (60000 / POLLING_TIME)
 #define VARIATION_THRESHOLD 72
-#define MILLIS_IN_MIN 60000UL
+#define MIN_IN_MICRO 60000000UL
 #define DEBUG 1
+#define DBL_TICK_TRASHOLD 10000 //treshold in microseconds
 
 volatile unsigned long fallingEdgeCount = 0;
 unsigned long startTime = 0;
@@ -55,25 +56,28 @@ void printDebugAverage(void);
 float calculateAverageUntilThresholdExceeded(void);
 
 long int last_pulse = 0;
-long int pulse_interval = 999999999;
 
-#define buff_size 10
-long int pulse_interval_avg = 0;
-long int buff[buff_size];
+float cpm = 0;
 
-float alpha = 0.1; // Smoothing factor
-volatile float smoothedCountRate = 0; // Smoothed count rate
+int debounce_flag = 0;
 
-long int c = 0;
+long int pulse_interval = 0;
+long int cpm_avg = 0;
 
 void geigerInterrupt(){
   long int pulse_stamp = micros();
-  pulse_interval = pulse_stamp - last_pulse;
-  buff[c] = pulse_interval;
-  c++;
+  long int pulse_interval_tmp = pulse_stamp - last_pulse;
   
-  c = c % buff_size;
-  //pulse_interval_avg = pulse_interval_avg - 0.07*(pulse_interval_avg - pulse_interval);
+  if(pulse_interval_tmp < pulse_interval*0.05){
+    if(debounce_flag > 0){
+      pulse_interval = pulse_interval_tmp;
+    }
+    debounce_flag++;
+  }
+  else{
+    pulse_interval = pulse_interval_tmp;
+    debounce_flag = 0;
+  }
   last_pulse = pulse_stamp;
 }
 
@@ -103,19 +107,13 @@ void loop()
 {
   long int timestmp = micros();
   
-  /*if(micros()- last_pulse > pulse_interval){
+  if(micros()- last_pulse > pulse_interval){
     pulse_interval = micros()- last_pulse;
-    pulse_interval_avg = pulse_interval_avg - 0.01*(pulse_interval_avg - pulse_interval);
-  }*/
-
-  pulse_interval_avg = 0;
-  for(int i = 0; i < buff_size; i++){
-    pulse_interval_avg += buff[i];
   }
 
-  pulse_interval_avg = pulse_interval_avg / (float)buff_size;
-  
-  Serial.println(pulse_interval_avg);
+  long int cpm_tmp = MIN_IN_MICRO/(float)pulse_interval;
+  cpm_avg = cpm_avg - 0.015*(cpm_avg - cpm_tmp);
+  Serial.println(cpm_avg,10);
   // send the message via ROS Serial
   radiation.data = pulse_interval/1000.0;
   pub1.publish(&radiation);
