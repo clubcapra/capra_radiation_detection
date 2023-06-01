@@ -29,7 +29,7 @@
 #define VARIATION_THRESHOLD 72
 #define MIN_IN_MICRO 60000000UL
 #define DEBUG 1
-#define DBL_TICK_TRASHOLD 10000 //treshold in microseconds
+#define DBL_TICK_TRESHOLD 100000 //treshold in microseconds
 
 volatile unsigned long fallingEdgeCount = 0;
 unsigned long startTime = 0;
@@ -61,15 +61,15 @@ float cpm = 0;
 
 int debounce_flag = 0;
 
-long int pulse_interval = 0;
-long int cpm_avg = 0;
+long int pulse_interval = 99999999;
+float cpm_avg = 0;
 
 void geigerInterrupt(){
   long int pulse_stamp = micros();
   long int pulse_interval_tmp = pulse_stamp - last_pulse;
   
-  if(pulse_interval_tmp < pulse_interval*0.05){
-    if(debounce_flag > 0){
+  if(pulse_interval_tmp < DBL_TICK_TRESHOLD){
+    if(debounce_flag > 3){
       pulse_interval = pulse_interval_tmp;
     }
     debounce_flag++;
@@ -83,8 +83,7 @@ void geigerInterrupt(){
 
 void setup()
 {
-  if (DEBUG)
-  {
+  if (DEBUG){
     Serial.begin(115200);
   }
 
@@ -111,8 +110,8 @@ void loop()
     pulse_interval = micros()- last_pulse;
   }
 
-  long int cpm_tmp = MIN_IN_MICRO/(float)pulse_interval;
-  cpm_avg = cpm_avg - 0.015*(cpm_avg - cpm_tmp);
+  float cpm_tmp = MIN_IN_MICRO/(float)pulse_interval;
+  cpm_avg = cpm_avg - 0.01*(cpm_avg - cpm_tmp);
   Serial.println(cpm_avg,10);
   // send the message via ROS Serial
   radiation.data = pulse_interval/1000.0;
