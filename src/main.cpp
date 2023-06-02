@@ -111,7 +111,7 @@ void loop()
   }
 
   float cpm_tmp = MIN_IN_MICRO/(float)pulse_interval;
-  cpm_avg = cpm_avg - 0.01*(cpm_avg - cpm_tmp);
+  cpm_avg = cpm_avg - 0.007*(cpm_avg - cpm_tmp);
   Serial.println(cpm_avg,10);
   // send the message via ROS Serial
   radiation.data = pulse_interval/1000.0;
