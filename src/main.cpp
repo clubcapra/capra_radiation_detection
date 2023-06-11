@@ -22,8 +22,7 @@
 #include <std_msgs/Empty.h>
 #include <std_msgs/UInt16.h>
 #include <std_msgs/Float64.h>
-
-#define GEIGERPIN PB4
+#define GEIGERPIN D1
 #define POLLING_TIME 5000
 #define BUFFER_SIZE (60000 / POLLING_TIME)
 #define VARIATION_THRESHOLD 72
@@ -61,10 +60,10 @@ float cpm = 0;
 
 int debounce_flag = 0;
 
-long int pulse_interval = 99999999;
+long unsigned int pulse_interval = 99999999;
 float cpm_avg = 0;
 
-void geigerInterrupt(){
+void IRAM_ATTR geigerInterrupt(){
   long int pulse_stamp = micros();
   long int pulse_interval_tmp = pulse_stamp - last_pulse;
   
@@ -88,7 +87,7 @@ void setup()
   }
 
   // GEIGER
-  pinMode(GEIGERPIN, INPUT_FLOATING);
+  pinMode(GEIGERPIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(GEIGERPIN), geigerInterrupt, FALLING);
 
   // TIMER
@@ -104,7 +103,7 @@ void setup()
 
 void loop()
 {
-  long int timestmp = micros();
+  long unsigned int timestmp = micros();
   
   if(micros()- last_pulse > pulse_interval){
     pulse_interval = micros()- last_pulse;
