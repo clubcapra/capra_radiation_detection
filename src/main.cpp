@@ -18,10 +18,6 @@
  * [ USB ]                -- [ PA11: USB-, PA12: USB+ ]
  */
 #include <Arduino.h>
-#include <ros.h>
-#include <std_msgs/Empty.h>
-#include <std_msgs/UInt16.h>
-#include <std_msgs/Float64.h>
 
 #define GEIGERPIN PB4
 #define POLLING_TIME 5000
@@ -44,11 +40,6 @@ float averageuSvPHRecalculated = 0;
 int cpmBuffer[BUFFER_SIZE];
 float usvPerHourBuffer[BUFFER_SIZE];
 int bufferIndex = 0;
-
-// ROS SERIAL INITIALISATION
-ros::NodeHandle nh;
-std_msgs::Float64 radiation;
-ros::Publisher pub1("radiation", &radiation);
 
 void printDebug(unsigned long count, unsigned long elapsedTime, unsigned int cpm, float usvPerHour);
 float calculateUsvPH(unsigned int cpm, float conversionRate);
@@ -93,11 +84,6 @@ void setup()
 
   // TIMER
   startTime = millis();
-
-  // ROS SETUP
-  nh.getHardware()->setBaud(57600);
-  nh.initNode();
-  nh.advertise(pub1);
 }
 
 
@@ -112,12 +98,9 @@ void loop()
 
   float cpm_tmp = MIN_IN_MICRO/(float)pulse_interval;
   cpm_avg = cpm_avg - 0.007*(cpm_avg - cpm_tmp);
-  Serial.println(cpm_avg,10);
-  // send the message via ROS Serial
-  radiation.data = pulse_interval/1000.0;
-  pub1.publish(&radiation);
-  nh.spinOnce();
 
+  Serial.println(cpm_avg,10);
+  
   while(micros() - timestmp < 100000){
   }
 }
