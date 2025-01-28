@@ -27,8 +27,9 @@
 #define POLLING_TIME 5000
 #define BUFFER_SIZE (60000 / POLLING_TIME)
 #define VARIATION_THRESHOLD 72
-#define MILLIS_IN_MIN 60000UL
-#define DEBUG 0
+#define MIN_IN_MICRO 60000000UL
+#define DEBUG 1
+#define DBL_TICK_TRESHOLD 100000 //treshold in microseconds
 
 volatile unsigned long fallingEdgeCount = 0;
 unsigned long startTime = 0;
@@ -54,16 +55,35 @@ float calculateUsvPH(unsigned int cpm, float conversionRate);
 void printDebugAverage(void);
 float calculateAverageUntilThresholdExceeded(void);
 
-void geigerInterrupt()
-{
-  fallingEdgeCount++;
+long int last_pulse = 0;
+
+float cpm = 0;
+
+int debounce_flag = 0;
+
+long int pulse_interval = 99999999;
+float cpm_avg = 0;
+
+void geigerInterrupt(){
+  long int pulse_stamp = micros();
+  long int pulse_interval_tmp = pulse_stamp - last_pulse;
+  
+  if(pulse_interval_tmp < DBL_TICK_TRESHOLD){
+    if(debounce_flag > 3){
+      pulse_interval = pulse_interval_tmp;
+    }
+    debounce_flag++;
+  }
+  else{
+    pulse_interval = pulse_interval_tmp;
+    debounce_flag = 0;
+  }
+  last_pulse = pulse_stamp;
 }
 
 void setup()
 {
-  if (DEBUG)
-  {
-    // SERIAL
+  if (DEBUG){
     Serial.begin(115200);
   }
 
@@ -80,60 +100,25 @@ void setup()
   nh.advertise(pub1);
 }
 
+
+
 void loop()
 {
-  // Timer
-  unsigned long currentTime = millis();
-  unsigned long elapsedTime = currentTime - previousTime;
+  long int timestmp = micros();
+  
+  if(micros()- last_pulse > pulse_interval){
+    pulse_interval = micros()- last_pulse;
+  }
 
-  // If 'POLLING_TIME' seconds have passed, calculate CPM & uSv/h
-  if (elapsedTime >= POLLING_TIME)
-  {
-    // Calculate CPM
-    unsigned long count = fallingEdgeCount - previousCount;
-    unsigned int cpm = (count * MILLIS_IN_MIN) / elapsedTime; // Adjusted calculation
+  float cpm_tmp = MIN_IN_MICRO/(float)pulse_interval;
+  cpm_avg = cpm_avg - 0.007*(cpm_avg - cpm_tmp);
+  Serial.println(cpm_avg,10);
+  // send the message via ROS Serial
+  radiation.data = pulse_interval/1000.0;
+  pub1.publish(&radiation);
+  nh.spinOnce();
 
-    // Convert CPM to uSv/h
-    float usvPerHour = calculateUsvPH(cpm, conversionRate);
-
-    // Store values in the buffer
-    cpmBuffer[bufferIndex] = cpm;
-    usvPerHourBuffer[bufferIndex] = usvPerHour;
-    bufferIndex = (bufferIndex + 1) % BUFFER_SIZE; // Rotate buffer index
-
-    // Debug information
-    if (DEBUG)
-    {
-      printDebug(count, elapsedTime, cpm, usvPerHour);
-      if (bufferIndex >= BUFFER_SIZE)
-      {
-        flagBuffer = 1;
-      }
-      if (flagBuffer)
-      {
-        printDebugAverage();
-      }
-    }
-
-    // Calculate the average that's within the threshhold
-    averageCPMRecalculated = calculateAverageUntilThresholdExceeded();
-    averageuSvPHRecalculated = calculateUsvPH(averageCPMRecalculated, conversionRate);
-
-    // Reset count and time for next calculation
-    previousCount = fallingEdgeCount;
-    previousTime = currentTime;
-
-    // Check what message is being send
-    if (DEBUG)
-    {
-      Serial.print("\naverageuSvPHRecalculated : ");
-      Serial.print(averageuSvPHRecalculated);
-    }
-
-    // send the message via ROS Serial
-    radiation.data = averageuSvPHRecalculated;
-    pub1.publish(&radiation);
-    nh.spinOnce();
+  while(micros() - timestmp < 100000){
   }
 }
 
