@@ -1,6 +1,6 @@
 /*
  * Project: Radiation Detector - STM32
- * Author: David Caron
+ * Author: David Caron et Émile Lacroix modif CAN (2025/05/31)
  * Organization: CAPRA - ÉTS
  *
  * Description:
@@ -14,10 +14,15 @@
  *
  * Connection Diagram:
  * [ Geiger-Muller Tube ] -- [ PB4: Geiger Input Pin ]
- * [ CANBUS ]             -- [ PB8: CANRX, PB9: CANTX ]
+ * [ CANBUS ]             -- [ PB8: CANRX, PB9: CANTX ] 
  * [ USB ]                -- [ PA11: USB-, PA12: USB+ ]
+ * 
+ * Usefull information...
+ * [ CAN ID ]             -- [30]
+ * 
  */
 #include <Arduino.h>
+#include <STM32_CAN.h>
 
 #define GEIGERPIN PB4
 #define POLLING_TIME 5000
@@ -25,7 +30,13 @@
 #define VARIATION_THRESHOLD 72
 #define MIN_IN_MICRO 60000000UL
 #define DEBUG 1
-#define DBL_TICK_TRESHOLD 100000 //treshold in microseconds
+#define DBL_TICK_TRESHOLD 100000 //treshold in microsecond
+
+// -- STM 32 define CAN -- //
+STM32_CAN Can(CAN1,ALT);
+static CAN_message_t CAN_TX_msg;
+#define CANID 30
+#define length 8
 
 volatile unsigned long fallingEdgeCount = 0;
 unsigned long startTime = 0;
@@ -74,9 +85,17 @@ void geigerInterrupt(){
 
 void setup()
 {
+  // -- set speed -- // 
   if (DEBUG){
     Serial.begin(115200);
   }
+
+  // -- setup CAN -- AND -- baud rate -- // 
+  Can.begin();
+  Can.setBaudRate(500000);               // -- 500KBPS -- //
+
+  CAN_TX_msg.id  = CANID  ;              // -- ID      -- //
+  CAN_TX_msg.len = length ;              // -- length  -- //
 
   // GEIGER
   pinMode(GEIGERPIN, INPUT_FLOATING);
@@ -85,8 +104,6 @@ void setup()
   // TIMER
   startTime = millis();
 }
-
-
 
 void loop()
 {
@@ -100,6 +117,14 @@ void loop()
   cpm_avg = cpm_avg - 0.007*(cpm_avg - cpm_tmp);
 
   Serial.println(cpm_avg,10);
+
+  // -- CAN -- //
+
+  int message = (int)cpm_avg ;
+
+  CAN_TX_msg.buf[0] = message ;
+
+  Can.write(CAN_TX_msg);  
   
   while(micros() - timestmp < 100000){
   }
